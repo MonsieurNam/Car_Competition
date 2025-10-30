@@ -1,0 +1,5 @@
+numpy
+opencv-python>=4.5.4
+websockets==11.0.3
+Pillow
+simple-pid
