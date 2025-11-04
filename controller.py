@@ -35,7 +35,6 @@ class CarController:
             print("State reset to FOLLOWING_LANE")
 
         def decide_turn_direction(self, intersec_dirs, sign):
-            # ... (logic decide_turn_direction giữ nguyên như phiên bản trước) ...
             print(f"DEBUG inside decide_turn_direction -> Sign: '{sign}', Detected Dirs: {intersec_dirs}")
             if sign and 'no_' not in sign:
                 print(f"Decision: Trusting sign '{sign}'")
@@ -58,7 +57,6 @@ class CarController:
             return None
 
         def process(self, steering_from_pid, throttle_from_pid, is_intersection, sign, intersec_dirs, lane_line_count, draw=None):
-            # ... (logic process của StateManager giữ nguyên như phiên bản trước) ...
             if self.state == 'FOLLOWING_LANE' and is_intersection:
                 self.state = 'APPROACHING_INTERSECTION'
                 print("State change: FOLLOWING_LANE -> APPROACHING_INTERSECTION")
