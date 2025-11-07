@@ -4,13 +4,12 @@
 # CHẾ ĐỘ DEBUG
 # =============================================================================
 # Đặt thành True để hiển thị các cửa sổ hình ảnh xử lý
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 # =============================================================================
 # CẤU HÌNH XỬ LÝ ẢNH
 # =============================================================================
-# Kích thước ảnh sẽ được resize trước khi xử lý để tăng tốc độ
 IMG_WIDTH = 320
 IMG_HEIGHT = 280
 
@@ -37,56 +36,26 @@ MORPH_KERNEL_SIZE = (3, 3)
 PID_KP = 0.02 # Bắt đầu với 0.01 hoặc 0.02
 PID_KI = 0.00
 PID_KD = 0.0058
-
-# Giới hạn giá trị output của PID để tránh góc lái quá lớn (-1.0 là rẽ trái tối đa, 1.0 là rẽ phải tối đa)
 PID_OUTPUT_LIMITS = (-1.0, 1.0)
-
-ANOMALY_DEVIATION_THRESHOLD = 60
 # =============================================================================
 # CẤU HÌNH TỐC ĐỘ ĐỘNG (THROTTLE)
 # =============================================================================
-# Tốc độ tối đa khi xe chạy trên đường thẳng
 MAX_THROTTLE = 0.88
-
-# Tốc độ tối thiểu khi xe vào cua gắt
 MIN_THROTTLE = 0.3
-
-# Tốc độ của xe khi đang tiếp cận một giao lộ đã được phát hiện
 THROTTLE_AT_INTERSECTION_APPROACH = 0.64
-
 THROTTLE_AT_TURN = 0.45
-
-# Thời gian tối thiểu và tối đa cho một hành động rẽ
-# Xe sẽ ở trạng thái rẽ trong ít nhất MIN giây và nhiều nhất MAX giây
-MIN_TURNING_TIME = 0.2 # (giây)
-MAX_TURNING_TIME = 0.4 # (giây)
+MIN_TURNING_TIME = 0.2 
+MAX_TURNING_TIME = 0.3 
 
 # =============================================================================
 # CẤU HÌNH LOGIC GIAO LỘ
 # =============================================================================
 # Ngưỡng diện tích tối thiểu để xác định một vùng có thể là giao lộ
-# GIÁ TRỊ NÀY CẦN ĐƯỢC TINH CHỈNH DỰA TRÊN THỰC TẾ SAU KHI RESIZE ẢNH
 INTERSECTION_MIN_AREA_THRESHOLD = 16000
-AREA_BUFFER_SIZE = 5
-# (Tùy chọn cho Giải pháp 2) Tỷ lệ để phát hiện sự tăng vọt so với diện tích trung bình
-INTERSECTION_AREA_SPIKE_RATIO = 1.5
 
-# Ngưỡng để xác định hướng đi có tồn tại ở giao lộ hay không
-INTERSECTION_LEFT_THRESHOLD = 100
-INTERSECTION_RIGHT_THRESHOLD = 60
-INTERSECTION_STRAIGHT_THRESHOLD = 2 # Số lượng contour màu đen tối thiểu
-
-# Giá trị góc lái CỘNG THÊM khi rẽ tại giao lộ
-# Lưu ý: PID đã xử lý việc bám làn, giá trị này chỉ để "ép" xe rẽ dứt khoát hơn
 TURN_LEFT_STEERING = -0.8
 TURN_RIGHT_STEERING = 0.8
 
-# Khoảng cách offset để tính toán góc lái khi chỉ thấy 1 bên làn ở giao lộ
-# (Giá trị cũ là 220, giảm 1 nửa do resize ảnh)
-LANE_OFFSET_AT_INTERSECTION = 110
-
-FAR_ROI_Y_START_RATIO = 0.50 # Bắt đầu từ nửa ảnh
-FAR_ROI_Y_END_RATIO   = 0.75 # Kết thúc tại điểm bắt đầu của ROI bám làn
-
-# Ngưỡng diện tích tối thiểu cho các vạch kẻ đường trong Far ROI để được xem xét
+FAR_ROI_Y_START_RATIO = 0.50
+FAR_ROI_Y_END_RATIO   = 0.75 
 FAR_ROI_MIN_CONTOUR_AREA = 50

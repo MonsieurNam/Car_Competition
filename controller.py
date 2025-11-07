@@ -25,6 +25,10 @@ class CarController:
         self.sign_memory_duration = 2.0 
 
         self.throttle = config.MAX_THROTTLE
+
+        self.was_long_straight_last_frame = False
+        self.debug_image_counter = 0
+
         print("CarController with Long-Range Perception initialized.")
 
     class StateManager:
@@ -103,8 +107,10 @@ class CarController:
                     self.reset()
 
             final_steering, final_throttle = steering_from_pid, throttle_from_pid
+            
             if self.state == 'APPROACHING_INTERSECTION':
                 final_throttle = config.THROTTLE_AT_INTERSECTION_APPROACH
+                
             elif self.state == 'EXECUTING_TURN':
                 self.blinker(self.turn_direction, draw)
                 if self.turn_direction == 'left':
@@ -129,27 +135,40 @@ class CarController:
     def is_straight_path_long(self, full_frame):
         """
         Phân tích vùng ảnh phía xa để xác định đường có thẳng và dài không.
-        Trả về True nếu phát hiện 2 vạch kẻ đường song song, ngược lại False.
         """
         h, w = full_frame.shape[:2]
         start_y = int(h * config.FAR_ROI_Y_START_RATIO)
         end_y = int(h * config.FAR_ROI_Y_END_RATIO)
         far_roi = full_frame[start_y:end_y, :]
 
-        lower_gray, upper_gray = np.array(config.GRAY_LANE_LOWER_HSV), np.array(config.GRAY_LANE_UPPER_HSV)
-        hsv_img = cv2.cvtColor(far_roi, cv2.COLOR_BGR2HSV)
-        mask = cv2.inRange(hsv_img, lower_gray, upper_gray)
+        lower_white = np.array([0, 0, 180])
+        upper_white = np.array([180, 30, 255])
         
+        hsv_img = cv2.cvtColor(far_roi, cv2.COLOR_BGR2HSV)
+        mask = cv2.inRange(hsv_img, lower_white, upper_white)
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        valid_contours = [c for c in contours if cv2.contourArea(c) > config.FAR_ROI_MIN_CONTOUR_AREA]
+        
+        valid_contours = []
+        for c in contours:
+            area = cv2.contourArea(c)
+            if area < config.FAR_ROI_MIN_CONTOUR_AREA:
+                continue
+            x, y, cont_w, cont_h = cv2.boundingRect(c)
+            if cont_w == 0 or cont_h == 0:
+                continue
+            aspect_ratio = cont_h / cont_w
+            if aspect_ratio <= 1.0:
+                continue
+            valid_contours.append(c)
 
         if len(valid_contours) == 2:
             moments1, moments2 = cv2.moments(valid_contours[0]), cv2.moments(valid_contours[1])
             if moments1['m00'] > 0 and moments2['m00'] > 0:
                 cx1, cx2 = int(moments1['m10'] / moments1['m00']), int(moments2['m10'] / moments2['m00'])
                 if (cx1 - w//2) * (cx2 - w//2) < 0: # Kiểm tra 2 contour ở 2 bên tâm ảnh
-                    return True
-        return False
+                    return True, mask 
+        
+        return False, mask 
 
     def detect_intersection_paths(self, lane_mask):
         """Phát hiện các hướng đi có thể có tại giao lộ."""
@@ -203,9 +222,41 @@ class CarController:
                 throttle_from_pid = config.MAX_THROTTLE - (abs(steering_from_pid) * throttle_range)
         
         intersec_dirs, is_long_straight = [], False
+        debug_far_mask = None 
+        
         if is_intersection:
             intersec_dirs = self.detect_intersection_paths(mask_gray_clean)
-            is_long_straight = self.is_straight_path_long(frame)
+            
+            is_long_straight, debug_far_mask = self.is_straight_path_long(frame) 
+            
+            if is_long_straight and not self.was_long_straight_last_frame:
+                filename = f"debug_long_straight_{self.debug_image_counter}.jpg"
+                h, w = original_height, original_width
+                start_y = int(h * config.FAR_ROI_Y_START_RATIO)
+                end_y = int(h * config.FAR_ROI_Y_END_RATIO)
+                
+                debug_img_to_save = image.copy()
+                cv2.rectangle(debug_img_to_save, (0, start_y), (w, end_y), (0, 255, 255), 2) 
+                
+                # Cập nhật text debug
+                cv2.putText(debug_img_to_save, "FAR_ROI_CHECK (NOT_HORIZONTAL)", (10, start_y - 10), 
+                            cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
+                
+                cv2.imwrite(filename, debug_img_to_save)
+                print(f"DEBUG: Đã lưu ảnh {filename} (is_long_straight chuyển sang True)")
+
+                if debug_far_mask is not None:
+                    mask_filename = f"debug_long_straight_MASK_{self.debug_image_counter}.jpg"
+                    debug_mask_to_save = cv2.cvtColor(debug_far_mask, cv2.COLOR_GRAY2BGR)
+                    cv2.imwrite(mask_filename, debug_mask_to_save)
+                    print(f"DEBUG: Đã lưu ảnh mask {mask_filename}")
+                
+                self.debug_image_counter += 1
+            
+            self.was_long_straight_last_frame = is_long_straight
+
+        else:
+             self.was_long_straight_last_frame = False
         
         lane_line_count = 0
         if contours:
@@ -233,6 +284,10 @@ class CarController:
             cv2.putText(draw, f"Throttle: {final_throttle:.2f}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             cv2.line(draw, (0, int(original_height * config.ROI_Y_START_RATIO)), (original_width, int(original_height * config.ROI_Y_START_RATIO)), (255, 0, 0), 2)
             
+            far_start_y = int(original_height * config.FAR_ROI_Y_START_RATIO)
+            far_end_y = int(original_height * config.FAR_ROI_Y_END_RATIO)
+            cv2.rectangle(draw, (0, far_start_y), (original_width, far_end_y), (0, 255, 255), 2) # Màu vàng
+
             debug_mask = cv2.cvtColor(mask_gray_clean, cv2.COLOR_GRAY2BGR)
             if 'lane_center_x' in locals():
                  cv2.line(debug_mask, (img_center, 0), (img_center, img_height), (0, 0, 255), 2)
