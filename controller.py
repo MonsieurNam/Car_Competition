@@ -171,16 +171,27 @@ class CarController:
         return False, mask 
 
     def detect_intersection_paths(self, lane_mask):
-        """Phát hiện các hướng đi có thể có tại giao lộ."""
+        """
+        Phát hiện các hướng đi có thể có tại giao lộ.
+        *** CẬP NHẬT LOGIC ***
+        """
         available_paths = []
         h, w = lane_mask.shape
-        left_roi = lane_mask[:h//2, :w//3]
-        center_roi = lane_mask[:h//2, int(w*0.35):int(w*0.65)]
-        right_roi = lane_mask[:h//2, -w//3:]
+        
+        left_roi = lane_mask[h//2:, :w//3]
+        right_roi = lane_mask[h//2:, -w//3:]
 
-        if cv2.countNonZero(left_roi) / left_roi.size > 0.10: available_paths.append('left')
-        if cv2.countNonZero(center_roi) / center_roi.size > 0.15: available_paths.append('straight')
-        if cv2.countNonZero(right_roi) / right_roi.size > 0.10: available_paths.append('right')
+        center_roi = lane_mask[:h//2, int(w*0.35):int(w*0.65)]
+
+        if cv2.countNonZero(left_roi) / left_roi.size > 0.10: 
+            available_paths.append('left')
+        
+        if cv2.countNonZero(center_roi) / center_roi.size > 0.15: 
+            available_paths.append('straight')
+            
+        if cv2.countNonZero(right_roi) / right_roi.size > 0.10: 
+            available_paths.append('right')
+            
         return available_paths
 
     def get_control_signals(self, image, sign=None, draw=None):
@@ -195,37 +206,53 @@ class CarController:
             self.last_valid_sign = None
 
         roi_start_y = int(config.IMG_HEIGHT * config.ROI_Y_START_RATIO)
-        roi = frame[roi_start_y:, :]
-        img_height, img_width = roi.shape[:2]
-        img_center = img_width // 2
+        pid_roi = frame[roi_start_y:, :]
+        pid_img_height, pid_img_width = pid_roi.shape[:2]
+        pid_img_center = pid_img_width // 2
         
         lower_gray, upper_gray = np.array(config.GRAY_LANE_LOWER_HSV), np.array(config.GRAY_LANE_UPPER_HSV)
         kernel = np.ones(config.MORPH_KERNEL_SIZE, np.uint8)
-        hsv_img = cv2.cvtColor(roi, cv2.COLOR_BGR2HSV)
-        mask_gray = cv2.inRange(hsv_img, lower_gray, upper_gray)
-        mask_gray_clean = cv2.morphologyEx(mask_gray, cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(mask_gray_clean, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        hsv_img_pid = cv2.cvtColor(pid_roi, cv2.COLOR_BGR2HSV)
+        mask_gray_pid = cv2.inRange(hsv_img_pid, lower_gray, upper_gray)
+        mask_gray_clean_pid = cv2.morphologyEx(mask_gray_pid, cv2.MORPH_CLOSE, kernel)
+        contours_pid, _ = cv2.findContours(mask_gray_clean_pid, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         steering_from_pid, throttle_from_pid = 0.0, config.MIN_THROTTLE
         is_intersection, current_area = False, 0
+        largest_contour_pid = None
         
-        if contours:
-            largest_contour = max(contours, key=cv2.contourArea)
-            current_area = cv2.contourArea(largest_contour)
-            if current_area > config.INTERSECTION_MIN_AREA_THRESHOLD: is_intersection = True
-            M = cv2.moments(largest_contour)
+        if contours_pid:
+            largest_contour_pid = max(contours_pid, key=cv2.contourArea)
+            current_area = cv2.contourArea(largest_contour_pid)
+            if current_area > config.INTERSECTION_MIN_AREA_THRESHOLD: 
+                is_intersection = True # KÍCH HOẠT logic giao lộ
+            
+            M = cv2.moments(largest_contour_pid)
             if M['m00'] > 0:
                 lane_center_x = int(M['m10'] / M['m00'])
-                deviation = lane_center_x - img_center
+                deviation = lane_center_x - pid_img_center
                 steering_from_pid = self.pid_controller(-deviation)
                 throttle_range = config.MAX_THROTTLE - config.MIN_THROTTLE
                 throttle_from_pid = config.MAX_THROTTLE - (abs(steering_from_pid) * throttle_range)
         
         intersec_dirs, is_long_straight = [], False
         debug_far_mask = None 
+        mask_gray_clean_intersec = None 
+
+
+        
+        intersec_start_y = int(config.IMG_HEIGHT * config.INTERSEC_ROI_Y_START_RATIO)
+        intersec_end_y = int(config.IMG_HEIGHT * config.INTERSEC_ROI_Y_END_RATIO)
+
+        intersection_roi_frame = frame[intersec_start_y:intersec_end_y, :]
+        
+        hsv_img_intersec = cv2.cvtColor(intersection_roi_frame, cv2.COLOR_BGR2HSV)
+        mask_gray_intersec = cv2.inRange(hsv_img_intersec, lower_gray, upper_gray)
+        mask_gray_clean_intersec = cv2.morphologyEx(mask_gray_intersec, cv2.MORPH_CLOSE, kernel)
         
         if is_intersection:
-            intersec_dirs = self.detect_intersection_paths(mask_gray_clean)
+            intersec_dirs = self.detect_intersection_paths(mask_gray_clean_intersec)
             
             is_long_straight, debug_far_mask = self.is_straight_path_long(frame) 
             
@@ -237,14 +264,10 @@ class CarController:
                 
                 debug_img_to_save = image.copy()
                 cv2.rectangle(debug_img_to_save, (0, start_y), (w, end_y), (0, 255, 255), 2) 
-                
-                # Cập nhật text debug
                 cv2.putText(debug_img_to_save, "FAR_ROI_CHECK (NOT_HORIZONTAL)", (10, start_y - 10), 
                             cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
-                
                 cv2.imwrite(filename, debug_img_to_save)
                 print(f"DEBUG: Đã lưu ảnh {filename} (is_long_straight chuyển sang True)")
-
                 if debug_far_mask is not None:
                     mask_filename = f"debug_long_straight_MASK_{self.debug_image_counter}.jpg"
                     debug_mask_to_save = cv2.cvtColor(debug_far_mask, cv2.COLOR_GRAY2BGR)
@@ -254,14 +277,13 @@ class CarController:
                 self.debug_image_counter += 1
             
             self.was_long_straight_last_frame = is_long_straight
-
         else:
              self.was_long_straight_last_frame = False
         
         lane_line_count = 0
-        if contours:
-            x, y, w, h = cv2.boundingRect(largest_contour)
-            if w > img_width * 0.8: lane_line_count = 2
+        if largest_contour_pid is not None:
+            x, y, w, h = cv2.boundingRect(largest_contour_pid)
+            if w > pid_img_width * 0.8: lane_line_count = 2
             else: lane_line_count = 1
         
         final_steering, final_throttle, is_turning = self.state_manager.process(
@@ -282,15 +304,43 @@ class CarController:
             cv2.putText(draw, f"IsLongStraight: {is_long_straight}", (10, 120), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 255, 255), 2)
             cv2.putText(draw, f"Steer: {final_steering:.2f}", (10, 150), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
             cv2.putText(draw, f"Throttle: {final_throttle:.2f}", (10, 180), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 2)
-            cv2.line(draw, (0, int(original_height * config.ROI_Y_START_RATIO)), (original_width, int(original_height * config.ROI_Y_START_RATIO)), (255, 0, 0), 2)
-            
-            far_start_y = int(original_height * config.FAR_ROI_Y_START_RATIO)
-            far_end_y = int(original_height * config.FAR_ROI_Y_END_RATIO)
-            cv2.rectangle(draw, (0, far_start_y), (original_width, far_end_y), (0, 255, 255), 2) # Màu vàng
 
-            debug_mask = cv2.cvtColor(mask_gray_clean, cv2.COLOR_GRAY2BGR)
-            if 'lane_center_x' in locals():
-                 cv2.line(debug_mask, (img_center, 0), (img_center, img_height), (0, 0, 255), 2)
-                 cv2.line(debug_mask, (lane_center_x, 0), (lane_center_x, img_height), (0, 255, 0), 2)
+            y_start_draw = int(original_height * config.INTERSEC_ROI_Y_START_RATIO) # 60%
+            y_half_draw  = int(original_height * (config.INTERSEC_ROI_Y_START_RATIO + (config.INTERSEC_ROI_Y_END_RATIO - config.INTERSEC_ROI_Y_START_RATIO) / 2)) # 70%
+            y_end_draw   = int(original_height * config.INTERSEC_ROI_Y_END_RATIO)    # 80%
+
+            w_third_draw = int(original_width / 3)
+            w_35_draw = int(original_width * 0.35)
+            w_65_draw = int(original_width * 0.65)
+            
+            cv2.rectangle(draw, (0, y_half_draw), (w_third_draw, y_end_draw), (0, 255, 0), 2)
+            cv2.putText(draw, "LEFT_PATH", (5, y_half_draw + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 1)
+            
+            cv2.rectangle(draw, (w_35_draw, y_start_draw), (w_65_draw, y_half_draw), (255, 0, 0), 2)
+            cv2.putText(draw, "STRAIGHT_PATH", (w_35_draw + 5, y_start_draw + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 0, 0), 1)
+
+            cv2.rectangle(draw, (original_width - w_third_draw, y_half_draw), (original_width - 1, y_end_draw), (0, 0, 255), 2)
+            cv2.putText(draw, "RIGHT_PATH", (original_width - w_third_draw + 5, y_half_draw + 20), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 1)
+            
+            cv2.line(draw, (0, int(original_height * config.ROI_Y_START_RATIO)), (original_width, int(original_height * config.ROI_Y_START_RATIO)), (255, 0, 0), 2) # PID ROI (80%)
+            far_start_y = int(original_height * config.FAR_ROI_Y_START_RATIO) # Far ROI (50%)
+            far_end_y = int(original_height * config.FAR_ROI_Y_END_RATIO)     # Far ROI (75%)
+            cv2.rectangle(draw, (0, far_start_y), (original_width, far_end_y), (0, 255, 255), 2)
+
+            if is_intersection:
+                debug_mask = cv2.cvtColor(mask_gray_clean_intersec, cv2.COLOR_GRAY2BGR)
+                h_dbg, w_dbg = debug_mask.shape[:2]
+                
+                cv2.rectangle(debug_mask, (int(w_dbg*0.35), 0), (int(w_dbg*0.65), h_dbg//2), (255, 0, 0), 2)
+                
+                cv2.rectangle(debug_mask, (0, h_dbg//2), (w_dbg//3, h_dbg-1), (0, 255, 0), 2)
+
+                cv2.rectangle(debug_mask, (w_dbg - (w_dbg//3), h_dbg//2), (w_dbg-1, h_dbg-1), (0, 0, 255), 2)
+            else:
+                debug_mask = cv2.cvtColor(mask_gray_clean_pid, cv2.COLOR_GRAY2BGR)
+                if 'lane_center_x' in locals():
+                    h_dbg, w_dbg = debug_mask.shape[:2]
+                    cv2.line(debug_mask, (pid_img_center, 0), (pid_img_center, h_dbg), (0, 0, 255), 2)
+                    cv2.line(debug_mask, (lane_center_x, 0), (lane_center_x, h_dbg), (0, 255, 0), 2)
 
         return final_throttle, final_steering, done_turning, debug_mask

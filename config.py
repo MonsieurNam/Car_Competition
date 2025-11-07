@@ -16,7 +16,8 @@ IMG_HEIGHT = 280
 # Vùng Quan Tâm (Region of Interest - ROI)
 # Chỉ xử lý phần ảnh từ ROI_Y_START (tính từ đỉnh) đến cuối ảnh (tỷ lệ 0.0 -> 1.0)
 ROI_Y_START_RATIO = 0.8
-
+INTERSEC_ROI_Y_START_RATIO = 0.50 
+INTERSEC_ROI_Y_END_RATIO = 0.75  
 
 # =============================================================================
 # CẤU HÌNH PHÁT HIỆN LÀN ĐƯỜNG MÀU XÁM
