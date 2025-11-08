@@ -16,8 +16,8 @@ IMG_HEIGHT = 280
 # Vùng Quan Tâm (Region of Interest - ROI)
 # Chỉ xử lý phần ảnh từ ROI_Y_START (tính từ đỉnh) đến cuối ảnh (tỷ lệ 0.0 -> 1.0)
 ROI_Y_START_RATIO = 0.8
-INTERSEC_ROI_Y_START_RATIO = 0.50 
-INTERSEC_ROI_Y_END_RATIO = 0.75  
+INTERSEC_ROI_Y_START_RATIO = 0.60 
+INTERSEC_ROI_Y_END_RATIO = 0.85  
 
 # =============================================================================
 # CẤU HÌNH PHÁT HIỆN LÀN ĐƯỜNG MÀU XÁM
@@ -46,7 +46,7 @@ MIN_THROTTLE = 0.3
 THROTTLE_AT_INTERSECTION_APPROACH = 0.64
 THROTTLE_AT_TURN = 0.45
 MIN_TURNING_TIME = 0.2 
-MAX_TURNING_TIME = 0.3 
+MAX_TURNING_TIME = 0.25 
 
 # =============================================================================
 # CẤU HÌNH LOGIC GIAO LỘ
@@ -57,6 +57,6 @@ INTERSECTION_MIN_AREA_THRESHOLD = 16000
 TURN_LEFT_STEERING = -0.8
 TURN_RIGHT_STEERING = 0.8
 
-FAR_ROI_Y_START_RATIO = 0.60
-FAR_ROI_Y_END_RATIO   = 0.85 
+FAR_ROI_Y_START_RATIO = 0.40
+FAR_ROI_Y_END_RATIO   = 0.65 
 FAR_ROI_MIN_CONTOUR_AREA = 50
