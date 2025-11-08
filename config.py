@@ -45,8 +45,8 @@ MAX_THROTTLE = 0.85
 MIN_THROTTLE = 0.3
 THROTTLE_AT_INTERSECTION_APPROACH = 0.64
 THROTTLE_AT_TURN = 0.45
-MIN_TURNING_TIME = 0.2 
-MAX_TURNING_TIME = 0.25 
+MIN_TURNING_TIME = 0.25
+MAX_TURNING_TIME = 0.3 
 
 # =============================================================================
 # CẤU HÌNH LOGIC GIAO LỘ
