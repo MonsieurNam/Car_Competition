@@ -4,7 +4,7 @@
 # CHẾ ĐỘ DEBUG
 # =============================================================================
 # Đặt thành True để hiển thị các cửa sổ hình ảnh xử lý
-DEBUG_MODE = False
+DEBUG_MODE = True
 
 
 # =============================================================================
@@ -41,7 +41,7 @@ PID_OUTPUT_LIMITS = (-1.0, 1.0)
 # =============================================================================
 # CẤU HÌNH TỐC ĐỘ ĐỘNG (THROTTLE)
 # =============================================================================
-MAX_THROTTLE = 0.88
+MAX_THROTTLE = 0.85
 MIN_THROTTLE = 0.3
 THROTTLE_AT_INTERSECTION_APPROACH = 0.64
 THROTTLE_AT_TURN = 0.45
@@ -57,6 +57,6 @@ INTERSECTION_MIN_AREA_THRESHOLD = 16000
 TURN_LEFT_STEERING = -0.8
 TURN_RIGHT_STEERING = 0.8
 
-FAR_ROI_Y_START_RATIO = 0.40
-FAR_ROI_Y_END_RATIO   = 0.65 
+FAR_ROI_Y_START_RATIO = 0.55
+FAR_ROI_Y_END_RATIO   = 0.80 
 FAR_ROI_MIN_CONTOUR_AREA = 50
