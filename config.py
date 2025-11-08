@@ -4,7 +4,7 @@
 # CHẾ ĐỘ DEBUG
 # =============================================================================
 # Đặt thành True để hiển thị các cửa sổ hình ảnh xử lý
-DEBUG_MODE = True
+DEBUG_MODE = False
 
 
 # =============================================================================
@@ -57,6 +57,6 @@ INTERSECTION_MIN_AREA_THRESHOLD = 16000
 TURN_LEFT_STEERING = -0.8
 TURN_RIGHT_STEERING = 0.8
 
-FAR_ROI_Y_START_RATIO = 0.50
-FAR_ROI_Y_END_RATIO   = 0.75 
+FAR_ROI_Y_START_RATIO = 0.60
+FAR_ROI_Y_END_RATIO   = 0.85 
 FAR_ROI_MIN_CONTOUR_AREA = 50

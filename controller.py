@@ -76,13 +76,13 @@ class CarController:
                 print("Decision: No sign. Defaulting to long straight path.")
                 return 'straight'
             
-            if 'left' in intersec_dirs:
-                print("Decision: No long straight path. Defaulting to 'left'.")
-                return 'left'
-            
             if 'right' in intersec_dirs:
-                print("Decision: No straight or left path. Last resort is 'right'.")
+                print("Decision: No long straight path. Defaulting to 'right'.")
                 return 'right'
+            
+            if 'left' in intersec_dirs:
+                print("Decision: No straight or right path. Last resort is 'left'.")
+                return 'left'
 
             print("Decision: No valid path found.")
             return None
